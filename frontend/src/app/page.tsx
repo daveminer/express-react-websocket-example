@@ -1,11 +1,14 @@
 'use client';
 
-import WebSocketDemo from '@/components/WebSocketDemo';
+import BoardList from '@/components/BoardList';
+import CreateRootBoard from '@/components/CreateRootBoard';
 
 export default function Home() {
   return (
     <main className="min-h-screen bg-gray-100 py-8">
-      <WebSocketDemo />
+      <CreateRootBoard />
+      <BoardList />
+
     </main>
   );
 }

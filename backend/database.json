@@ -1,0 +1,46 @@
+{
+    "dev": {
+        "driver": "pg",
+        "host": "localhost",
+        "port": 5432,
+        "database": "board_app",
+        "username": "postgres",
+        "password": "postgres"
+    },
+    "docker": {
+        "driver": "pg",
+        "host": {
+            "ENV": "DB_HOST"
+        },
+        "port": {
+            "ENV": "DB_PORT"
+        },
+        "database": {
+            "ENV": "DB_NAME"
+        },
+        "username": {
+            "ENV": "DB_USER"
+        },
+        "password": {
+            "ENV": "DB_PASSWORD"
+        }
+    },
+    "prod": {
+        "driver": "pg",
+        "host": {
+            "ENV": "DB_HOST"
+        },
+        "port": {
+            "ENV": "DB_PORT"
+        },
+        "database": {
+            "ENV": "DB_NAME"
+        },
+        "username": {
+            "ENV": "DB_USER"
+        },
+        "password": {
+            "ENV": "DB_PASSWORD"
+        }
+    }
+}

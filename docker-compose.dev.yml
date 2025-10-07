@@ -1,6 +1,20 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:15
+    container_name: postgres-db-dev
+    environment:
+      - POSTGRES_DB=board_app
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    networks:
+      - app-network
+
   backend:
     build:
       context: ./backend
@@ -11,9 +25,17 @@ services:
     environment:
       - PORT=3001
       - NODE_ENV=development
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=board_app
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
     volumes:
       - ./backend:/app
       - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_started
     networks:
       - app-network
     command: npm run dev
@@ -42,3 +64,6 @@ services:
 networks:
   app-network:
     driver: bridge
+
+volumes:
+  postgres_data_dev:

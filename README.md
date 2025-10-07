@@ -1,150 +1,28 @@
-# Express Next.js WebSocket Demo with TypeScript
+## How to run
 
-This is a full-stack TypeScript application demonstrating the integration of Express.js backend with Next.js frontend, featuring REST API and WebSocket communication.
+The application is built into the docker compose environment, including the postgrest database.
 
-## Features
+To run, enter this into the console: `docker compose -f docker-compose.dev.yml up --build`
 
-- Express.js backend with TypeScript
-  - Typed REST API endpoints
-  - WebSocket server with typed events
-  - Clean architecture with proper interfaces
-- Next.js frontend with TypeScript
-  - Server-side rendering capabilities
-  - Client-side WebSocket integration
-  - Type-safe components and hooks
-  - Tailwind CSS for modern UI
-  - API route handling and proxying
-- Docker configuration for production-ready deployment
+From there, visit http://localhost:3000 to use the app.
 
-## Running the Application
+## Design decisions
 
-You can run both the frontend and backend services using Docker Compose:
+The main design decision is to use a self-referential table (with recursive CTE for handling depth) for the boards. The self-referential approach models the board functionality well, preserving descendant relationships through moves and handling deletion of child boards to the database. The recursive CTE provides a depth count which is used by the backend to enforce the depth limit.
 
-```bash
-docker-compose up
-```
+The frontend uses mainstream tools (redux, react-query) for development speed and simplicity.
 
-The application will be available at:
+## Trade-offs
 
-- Frontend: http://localhost:3000
-- Backend: http://localhost:3001
+There are other approaches for modeling the board relationships that could be more efficient (such as a materialized path via `ltree` or a closure table with precomputed ancestors), but they required too much time to implement.
 
-## Architecture
+The concept of users was skipped for time. The application is open, unsecured, and has no user functionality.
 
-### Backend (Express.js + TypeScript)
+## Future improvements
 
-- REST API endpoint at `/api/hello`
-- WebSocket server broadcasting notifications every minute
-- Running on port 3001
-- Type-safe request/response handling
-- CORS configured for frontend communication
+Some fields, like the depth limit, belong in environment variables but are currently hardcoded.
 
-### Frontend (Next.js + TypeScript)
+A simple serial is used for database ids, but a uuidv4 could be more appropriate.
 
-- Modern React application with server-side rendering
-- Custom WebSocket hook for real-time communication
-- Displays messages from `/api/hello` endpoint
-- Shows real-time notifications from WebSocket
-- Running on port 3000
-- Type-safe components and API integration
-- Tailwind CSS for responsive design
+A B-Tree index on the Board#parent_id field is appropriate and will make the recursive CTE faster.
 
-## Development
-
-### Development with Docker
-
-```bash
-# Start the development environment
-docker compose -f docker-compose.dev.yml up --build
-
-# Stop the development environment
-docker compose -f docker-compose.dev.yml down
-```
-
-The development environment includes:
-
-- Hot reloading for both frontend and backend
-- Volume mounts for real-time code changes
-- Development-specific configurations
-- Isolated node_modules for each service
-
-**Note about Package Management:** When adding new packages to either frontend or backend, you'll need to rebuild the Docker containers:
-
-```bash
-# 1. Stop the containers
-docker compose -f docker-compose.dev.yml down
-
-# 2. Rebuild and start the containers
-docker compose -f docker-compose.dev.yml up --build
-```
-
-### Backend Development
-
-```bash
-cd backend
-npm install
-npm run dev
-```
-
-### Frontend Development
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-## Project Structure
-
-```
-.
-├── backend/
-│   ├── src/
-│   │   ├── index.ts    # Express server with WebSocket setup
-│   │   └── types/      # TypeScript interfaces
-│   └── package.json
-├── frontend/
-│   ├── src/
-│   │   ├── app/        # Next.js pages
-│   │   ├── components/ # React components
-│   │   └── hooks/      # Custom hooks (WebSocket)
-│   └── package.json
-└── docker-compose.yml  # Development and production setup
-```
-
-## Environment Variables
-
-### Backend
-
-- `PORT`: Server port (default: 3001)
-- `NODE_ENV`: Environment mode
-
-### Frontend
-
-- `NEXT_PUBLIC_BACKEND_URL`: Backend API URL
-- `PORT`: Frontend port (default: 3000)
-
-## Features in Detail
-
-1. **Real-time Communication**
-
-   - Server sends notifications every minute
-   - WebSocket connection with automatic reconnection
-   - Connection status monitoring
-
-2. **Type Safety**
-
-   - Full TypeScript support
-   - Typed WebSocket events
-   - Type-safe API responses
-
-3. **Modern UI**
-
-   - Responsive design with Tailwind CSS
-   - Clean and intuitive interface
-   - Real-time updates without page refresh
-
-4. **Production Ready**
-   - Docker configuration for both services
-   - Environment variable management
-   - API proxying through Next.js

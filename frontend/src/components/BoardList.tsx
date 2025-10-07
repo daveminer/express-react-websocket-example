@@ -4,6 +4,7 @@ import React, { useEffect } from 'react';
 import { useRootBoards, useChildBoards, Board } from '../hooks/useBoards';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setRootBoards, setChildBoards, setLoading, setError } from '../store/slices/boardSlice';
+import CreateChildBoardButton from './CreateChildBoardButton';
 
 interface BoardItemProps {
     board: Board;
@@ -61,6 +62,8 @@ const BoardItem: React.FC<BoardItemProps> = ({ board, level = 0 }) => {
                     level={level + 1}
                 />
             ))}
+
+            <CreateChildBoardButton parentId={board.id} level={level} />
         </div>
     );
 };

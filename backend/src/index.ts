@@ -24,42 +24,6 @@ app.use(
   })
 );
 
-// Users endpoints
-app.get("/api/users", async (_req: Request, res: Response) => {
-  try {
-    const users = await UserModel.findAll();
-    res.json(users);
-  } catch (error) {
-    console.error("Error fetching users:", error);
-    res.status(500).json({ error: "Failed to fetch users" });
-  }
-});
-
-app.get("/api/users/:id", async (req: Request, res: Response) => {
-  try {
-    const id = parseInt(req.params.id);
-    const user = await UserModel.findById(id);
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-    res.json(user);
-  } catch (error) {
-    console.error("Error fetching user:", error);
-    res.status(500).json({ error: "Failed to fetch user" });
-  }
-});
-
-app.post("/api/users", async (req: Request, res: Response) => {
-  try {
-    const userData: CreateUserData = req.body;
-    const user = await UserModel.create(userData);
-    res.status(201).json(user);
-  } catch (error) {
-    console.error("Error creating user:", error);
-    res.status(500).json({ error: "Failed to create user" });
-  }
-});
-
 // Boards endpoints
 app.get("/api/boards", async (_req: Request, res: Response) => {
   try {
@@ -84,6 +48,9 @@ app.get("/api/boards/root", async (_req: Request, res: Response) => {
 app.get("/api/boards/:id", async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(404).json({ error: "Board not found" });
+    }
     const board = await BoardModel.findById(id);
     if (!board) {
       return res.status(404).json({ error: "Board not found" });
@@ -98,6 +65,9 @@ app.get("/api/boards/:id", async (req: Request, res: Response) => {
 app.get("/api/boards/:id/children", async (req: Request, res: Response) => {
   try {
     const parentId = parseInt(req.params.id);
+    if (isNaN(parentId)) {
+      return res.status(404).json({ error: "Board not found" });
+    }
     const boards = await BoardModel.findByParentId(parentId);
     res.json(boards);
   } catch (error) {
@@ -109,6 +79,9 @@ app.get("/api/boards/:id/children", async (req: Request, res: Response) => {
 app.get("/api/boards/:id/hierarchy", async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(404).json({ error: "Board not found" });
+    }
     const hierarchy = await BoardModel.getHierarchy(id);
     res.json(hierarchy);
   } catch (error) {
@@ -120,6 +93,9 @@ app.get("/api/boards/:id/hierarchy", async (req: Request, res: Response) => {
 app.get("/api/boards/:id/stats", async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(404).json({ error: "Board not found" });
+    }
     const stats = await BoardModel.getStats(id);
     res.json(stats);
   } catch (error) {
@@ -131,6 +107,9 @@ app.get("/api/boards/:id/stats", async (req: Request, res: Response) => {
 app.get("/api/boards/:id/depth", async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(404).json({ error: "Board not found" });
+    }
     const depth = await BoardModel.getDepth(id);
     res.json({ depth });
   } catch (error) {
@@ -165,6 +144,9 @@ app.post("/api/boards", async (req: Request, res: Response) => {
 app.put("/api/boards/:id", async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(404).json({ error: "Board not found" });
+    }
     const boardData: UpdateBoardData = req.body;
 
     // Check depth if parent_id is being updated
@@ -194,6 +176,9 @@ app.put("/api/boards/:id", async (req: Request, res: Response) => {
 app.delete("/api/boards/:id", async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(404).json({ error: "Board not found" });
+    }
     const deleted = await BoardModel.delete(id);
     if (!deleted) {
       return res.status(404).json({ error: "Board not found" });

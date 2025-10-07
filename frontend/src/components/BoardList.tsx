@@ -16,8 +16,12 @@ const BoardItem: React.FC<BoardItemProps> = ({ board, level = 0 }) => {
     const dispatch = useAppDispatch();
     const queryClient = useQueryClient();
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [showMoveDialog, setShowMoveDialog] = useState(false);
+    const [selectedParentId, setSelectedParentId] = useState<number | null>(null);
     const { data: childBoards, isLoading: childrenLoading, error: childrenError } = useChildBoards(board.id);
     const childBoardsFromStore = useAppSelector(state => state.boards.childBoards[board.id] || []);
+    const allChildBoards = useAppSelector(state => state.boards.childBoards);
+    const rootBoards = useAppSelector(state => state.boards.rootBoards);
 
     useEffect(() => {
         if (childBoards) {
@@ -67,6 +71,88 @@ const BoardItem: React.FC<BoardItemProps> = ({ board, level = 0 }) => {
         deleteBoardMutation.mutate(board.id);
     };
 
+    const moveBoardMutation = useMutation({
+        mutationFn: async ({ boardId, newParentId }: { boardId: number; newParentId: number | null }) => {
+            const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+            const response = await fetch(`${API_BASE_URL}/api/boards/${boardId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ parent_id: newParentId }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to move board');
+            }
+
+            const result = await response.json();
+            return result;
+        },
+        onSuccess: (updatedBoard) => {
+            // Invalidate all board queries to refresh the data
+            queryClient.invalidateQueries({ queryKey: ['boards', 'root'] });
+            queryClient.invalidateQueries({ queryKey: ['boards', 'children'] });
+
+            setShowMoveDialog(false);
+            setSelectedParentId(null);
+        },
+        onError: (error: Error) => {
+            console.error('Failed to move board:', error);
+            setShowMoveDialog(false);
+        },
+    });
+
+    const handleMove = () => {
+        moveBoardMutation.mutate({
+            boardId: board.id,
+            newParentId: selectedParentId,
+        });
+    };
+
+    // Get all available parent options (excluding current board and its descendants)
+    const getAvailableParents = (): Board[] => {
+        const allBoards: Board[] = [];
+
+        // Add all root boards
+        allBoards.push(...rootBoards);
+
+        // Add all child boards from Redux store
+        Object.values(allChildBoards).forEach(boardsArr => {
+            if (Array.isArray(boardsArr)) {
+                allBoards.push(...boardsArr);
+            }
+        });
+
+        // Remove duplicates based on ID
+        const uniqueBoards = allBoards.filter((board, index, self) =>
+            index === self.findIndex(b => b.id === board.id)
+        );
+
+        // Filter out current board and its descendants
+        const filterDescendants = (boards: Board[], excludeId: number): Board[] => {
+            return boards.filter(b => {
+                if (b.id === excludeId) return false;
+
+                // Check if this board is a descendant of the excluded board
+                const isDescendant = (boardId: number, ancestorId: number): boolean => {
+                    const board = uniqueBoards.find(b => b.id === boardId);
+                    if (!board || !board.parent_id) return false;
+                    if (board.parent_id === ancestorId) return true;
+                    return isDescendant(board.parent_id, ancestorId);
+                };
+
+                return !isDescendant(b.id, excludeId);
+            });
+        };
+
+        const availableParents = filterDescendants(uniqueBoards, board.id);
+        // Sort by title alphabetically
+        const sortedParents = availableParents.sort((a, b) => a.title.localeCompare(b.title));
+        return sortedParents;
+    };
+
     return (
         <div className={`ml-${level * 4} border-l-2 border-gray-200 pl-4 mb-4`}>
             <div className="bg-white rounded-lg shadow-sm border p-4 hover:shadow-md transition-shadow">
@@ -77,15 +163,26 @@ const BoardItem: React.FC<BoardItemProps> = ({ board, level = 0 }) => {
                             <p className="text-gray-600 mt-2">{board.description}</p>
                         )}
                     </div>
-                    <button
-                        onClick={() => setShowDeleteConfirm(true)}
-                        className="ml-2 p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                        title="Delete board"
-                    >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                    </button>
+                    <div className="flex items-center space-x-1">
+                        <button
+                            onClick={() => setShowMoveDialog(true)}
+                            className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                            title="Move board"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                            </svg>
+                        </button>
+                        <button
+                            onClick={() => setShowDeleteConfirm(true)}
+                            className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                            title="Delete board"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex items-center justify-between mt-3">
@@ -143,6 +240,62 @@ const BoardItem: React.FC<BoardItemProps> = ({ board, level = 0 }) => {
                                 )}
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Move Dialog */}
+            {showMoveDialog && (
+                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="mb-3">
+                        <h4 className="text-sm font-medium text-blue-800 mb-2">
+                            Move "{board.title}" to:
+                        </h4>
+                        <select
+                            value={selectedParentId || ''}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                const newParentId = value ? parseInt(value) : null;
+                                setSelectedParentId(newParentId);
+                            }}
+                            className="w-full px-2 py-1 text-sm border border-blue-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
+                        >
+                            <option value="">Root Level (No Parent)</option>
+                            {getAvailableParents().map(parent => (
+                                <option key={parent.id} value={parent.id}>
+                                    {parent.title}
+                                </option>
+                            ))}
+                        </select>
+                        <p className="text-xs text-blue-600 mt-1">
+                            {selectedParentId ? `Moving to parent ID: ${selectedParentId}` : 'Moving to root level (no parent)'}
+                        </p>
+                    </div>
+                    <div className="flex space-x-2 justify-end">
+                        <button
+                            onClick={() => {
+                                setShowMoveDialog(false);
+                                setSelectedParentId(null);
+                            }}
+                            className="px-3 py-1 text-xs text-gray-600 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
+                            disabled={moveBoardMutation.isPending}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleMove}
+                            className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                            disabled={moveBoardMutation.isPending}
+                        >
+                            {moveBoardMutation.isPending ? (
+                                <>
+                                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
+                                    Moving...
+                                </>
+                            ) : (
+                                'Move Board'
+                            )}
+                        </button>
                     </div>
                 </div>
             )}

@@ -110,16 +110,39 @@ export class BoardModel {
     static async update(id: number, data: UpdateBoardData): Promise<Board | null> {
         const { parent_id, title, description } = data;
 
-        const result = await pool.query(`
-      UPDATE boards 
-      SET 
-        parent_id = COALESCE($2, parent_id),
-        title = COALESCE($3, title),
-        description = COALESCE($4, description),
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = $1
-      RETURNING *
-    `, [id, parent_id, title, description]);
+        // Build dynamic query based on what fields are provided
+        const updates: string[] = [];
+        const values: any[] = [id];
+        let paramIndex = 2;
+
+        if (parent_id !== undefined) {
+            updates.push(`parent_id = $${paramIndex}`);
+            values.push(parent_id);
+            paramIndex++;
+        }
+
+        if (title !== undefined) {
+            updates.push(`title = $${paramIndex}`);
+            values.push(title);
+            paramIndex++;
+        }
+
+        if (description !== undefined) {
+            updates.push(`description = $${paramIndex}`);
+            values.push(description);
+            paramIndex++;
+        }
+
+        updates.push('updated_at = CURRENT_TIMESTAMP');
+
+        const query = `
+            UPDATE boards 
+            SET ${updates.join(', ')}
+            WHERE id = $1
+            RETURNING *
+        `;
+
+        const result = await pool.query(query, values);
 
         return result.rows[0] || null;
     }
